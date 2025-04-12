@@ -1,18 +1,19 @@
-package kvcacheindexer
+package client
+
+/*
 
 import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/neuralmagic/distributed-kv-cache/pkg/tokenization"
 	"strings"
 
-	"github.com/neuralmagic/distributed-kv-cache/pkg/lmcacheengine"
 	"github.com/neuralmagic/distributed-kv-cache/pkg/prefixhashtable"
-	"github.com/neuralmagic/distributed-kv-cache/pkg/tokenizer"
-
 	"github.com/redis/go-redis/v9"
 	"github.com/sirupsen/logrus"
 )
+
 
 const (
 	// DefaultLMChunkSize defines the default number of tokens per block for LM-style prefix hashing.
@@ -44,12 +45,11 @@ type Config struct {
 
 // KVCacheIndexer manages token-prefix mappings, block scoring, Redis hits, and filtering logic.
 type KVCacheIndexer struct {
-	Scorer           KVScorer
 	logger           *logrus.Entry
 	PrefixCache      *prefixhashtable.PrefixHashTable
 	lMCacheChunkSize int
 	redisClient      *redis.Client
-	tokenizer        *tokenizer.Tokenizer
+	tokenizer        *tokenization.Tokenizer
 }
 
 // ExtractPrefixTokens returns tokens from prefix-matched blocks and indicates whether an index update is needed.
@@ -136,26 +136,7 @@ func (k *KVCacheIndexer) TriggerPrefixIndexUpdate(prompt []string, modelInfo Mod
 
 // TokensToKVBlockKeys converts token sequences into hashed KV block keys using LMCache format.
 func (k *KVCacheIndexer) TokensToKVBlockKeys(tokens Tokens, modelInfo ModelInfo, format int) []string {
-	config := lmcacheengine.LMCacheEngineConfig{ChunkSize: 256}
-	metadata := lmcacheengine.LMCacheEngineMetadata{
-		Fmt:       "vllm",
-		ModelName: modelInfo.Name,
-		WorldSize: 1,
-		WorkerID:  0,
-	}
-
-	tokensDB := lmcacheengine.NewChunkedTokenDatabase(config, metadata)
-
-	processed, err := tokensDB.ProcessTokens(tokens)
-	if err != nil {
-		k.logger.Error("Error processing tokens:", err)
-		return nil
-	}
-	keys := make([]string, 0, len(processed))
-	for _, pt := range processed {
-		keys = append(keys, pt.Key.String())
-	}
-	return keys
+	return nil
 }
 
 // QueryKVBlockHits queries Redis for pods that contains the block key.
@@ -331,3 +312,5 @@ func NewKVCacheIndexerWithConfig(scorer KVScorer, cfg *Config) *KVCacheIndexer {
 		tokenizer:        tokenizer.NewTokenizer(),
 	}
 }
+
+*/

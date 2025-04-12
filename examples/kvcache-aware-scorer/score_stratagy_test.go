@@ -1,4 +1,4 @@
-package kvcacheindexer
+package kvcache_aware_scorer
 
 import (
 	"testing"

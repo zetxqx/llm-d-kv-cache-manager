@@ -1,6 +1,7 @@
-package pkg
+package kvblock_indexer
 
 import (
+	"github.com/neuralmagic/distributed-kv-cache/pkg/kvindex"
 	"github.com/neuralmagic/distributed-kv-cache/pkg/utils"
 	"github.com/redis/go-redis/v9"
 	"golang.org/x/net/context"
@@ -8,30 +9,32 @@ import (
 	"strings"
 )
 
-// KVCacheIndexer defines the interactions with the KVCache indexing backend.
-type KVCacheIndexer interface {
+// KVBlockIndexer defines the interactions with the KVCache indexing backend.
+type KVBlockIndexer interface {
 	// GetPodsForKeys retrieves the pods for the given keys.
 	// It returns a map where the keys are CacheEngineKey and the values are slices of pod names.
-	GetPodsForKeys(ctx context.Context, keys []CacheEngineKey) (map[CacheEngineKey][]string, error)
+	GetPodsForKeys(ctx context.Context,
+		keys []kvindex.CacheEngineKey) (map[kvindex.CacheEngineKey][]string, error)
 }
 
-type RedisKVCacheIndexer struct {
+type RedisKVBlockIndexer struct {
 	// RedisClient is the Redis client used for communication.
 	RedisClient *redis.Client
 }
 
-// NewRedisKVCacheIndexer creates a new RedisKVCacheIndexer instance.
-func NewRedisKVCacheIndexer(redisClient *redis.Client) *RedisKVCacheIndexer {
-	return &RedisKVCacheIndexer{
+// NewRedisKVCacheIndexer creates a new RedisKVBlockIndexer instance.
+func NewRedisKVCacheIndexer(redisClient *redis.Client) *RedisKVBlockIndexer {
+	return &RedisKVBlockIndexer{
 		RedisClient: redisClient,
 	}
 }
 
 // GetPodsForKeys retrieves the pods for the given keys.
-func (r *RedisKVCacheIndexer) GetPodsForKeys(ctx context.Context, keys []CacheEngineKey) (map[CacheEngineKey][]string, error) {
-	pods := make(map[CacheEngineKey][]string)
+func (r *RedisKVBlockIndexer) GetPodsForKeys(ctx context.Context,
+	keys []kvindex.CacheEngineKey) (map[kvindex.CacheEngineKey][]string, error) {
+	pods := make(map[kvindex.CacheEngineKey][]string)
 
-	redisKeys := utils.SliceMap(keys, func(key CacheEngineKey) string {
+	redisKeys := utils.SliceMap(keys, func(key kvindex.CacheEngineKey) string {
 		return key.String()
 	})
 	// use redis.MGet to get all keys at once

@@ -1,4 +1,4 @@
-package kvcacheindexer
+package kvcache_aware_scorer
 
 // KVScoringStrategy defines the strategy used to score pods for KV cache block reuse.
 type KVScoringStrategy string

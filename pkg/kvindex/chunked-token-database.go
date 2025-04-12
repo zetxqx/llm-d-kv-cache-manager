@@ -1,4 +1,4 @@
-package pkg
+package kvindex
 
 import (
 	"bytes"
@@ -7,6 +7,18 @@ import (
 	"encoding/hex"
 	"fmt"
 )
+
+// TokenDatabase defines the interface for token processing.
+type TokenDatabase interface {
+	ProcessTokens(tokens []uint32) ([]ProcessedChunk, error)
+}
+
+// ProcessedChunk represents one tuple result: the start and end indices and the CacheEngineKey.
+type ProcessedChunk struct {
+	Start int
+	End   int
+	Key   CacheEngineKey
+}
 
 // CacheEngineKey is equivalent to the LMCacheEngineKey in the Python code.
 type CacheEngineKey struct {
@@ -41,18 +53,6 @@ type LMCacheEngineMetadata struct {
 	WorkerID  int
 }
 
-// ProcessedChunk represents one tuple result: the start and end indices and the CacheEngineKey.
-type ProcessedChunk struct {
-	Start int
-	End   int
-	Key   CacheEngineKey
-}
-
-// TokenDatabase defines the interface for token processing.
-type TokenDatabase interface {
-	ProcessTokens(tokens []uint32) ([]ProcessedChunk, error)
-}
-
 // ChunkedTokenDatabase is a concrete implementation of TokenDatabase.
 // It mimics the ChunkedTokenDatabase in the Python code.
 type ChunkedTokenDatabase struct {
@@ -61,7 +61,7 @@ type ChunkedTokenDatabase struct {
 }
 
 // NewChunkedTokenDatabase creates a new instance with the given config and metadata.
-func NewChunkedTokenDatabase(config LMCacheEngineConfig, metadata LMCacheEngineMetadata) *ChunkedTokenDatabase {
+func NewChunkedTokenDatabase(config LMCacheEngineConfig, metadata LMCacheEngineMetadata) TokenDatabase {
 	return &ChunkedTokenDatabase{
 		chunkSize: config.ChunkSize,
 		metadata:  metadata,
@@ -118,8 +118,8 @@ func (db *ChunkedTokenDatabase) prefixHashes(tokenChunks [][]uint32) []string {
 	return hashes
 }
 
-// _makeKeyByHash creates a CacheEngineKey given the chunk hash.
-func (db *ChunkedTokenDatabase) _makeKeyByHash(chunkHash string) CacheEngineKey {
+// makeKeyByHash creates a CacheEngineKey given the chunk hash.
+func (db *ChunkedTokenDatabase) makeKeyByHash(chunkHash string) CacheEngineKey {
 	return CacheEngineKey{
 		Fmt:       db.metadata.Fmt,
 		ModelName: db.metadata.ModelName,
@@ -147,7 +147,7 @@ func (db *ChunkedTokenDatabase) ProcessTokens(tokens []uint32) ([]ProcessedChunk
 		results = append(results, ProcessedChunk{
 			Start: startIdx,
 			End:   endIdx,
-			Key:   db._makeKeyByHash(hashVal),
+			Key:   db.makeKeyByHash(hashVal),
 		})
 	}
 	return results, nil

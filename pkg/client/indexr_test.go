@@ -1,18 +1,18 @@
-package kvcacheindexer_test
+package client_test
 
 import (
 	"testing"
 
-	"github.com/neuralmagic/distributed-kv-cache/pkg/kvcacheindexer"
+	"github.com/neuralmagic/distributed-kv-cache/pkg/client"
 	"github.com/stretchr/testify/assert"
 )
 
 // TestPrefixUpdateAndMatch verifies that prefix hashes are empty before update
 // and return the correct pod after UpdatePodPrefix is called.
 func TestPrefixUpdateAndMatch(t *testing.T) {
-	indexer := kvcacheindexer.NewKVCacheIndexer()
+	indexer := client.NewKVCacheIndexer()
 	prompt := []string{"The", "sky", "is"}
-	model := kvcacheindexer.ModelInfo{Name: "llm", Version: "v1"}
+	model := indexer.ModelInfo{Name: "llm", Version: "v1"}
 
 	t.Logf("Using strategy: %s", indexer.Scorer.Strategy())
 
