@@ -1,4 +1,4 @@
-package lmcacheengine
+package pkg
 
 import (
 	"bytes"
@@ -41,8 +41,8 @@ type LMCacheEngineMetadata struct {
 	WorkerID  int
 }
 
-// ProcessedToken represents one tuple result: the start and end indices and the CacheEngineKey.
-type ProcessedToken struct {
+// ProcessedChunk represents one tuple result: the start and end indices and the CacheEngineKey.
+type ProcessedChunk struct {
 	Start int
 	End   int
 	Key   CacheEngineKey
@@ -50,7 +50,7 @@ type ProcessedToken struct {
 
 // TokenDatabase defines the interface for token processing.
 type TokenDatabase interface {
-	ProcessTokens(tokens []int) ([]ProcessedToken, error)
+	ProcessTokens(tokens []uint32) ([]ProcessedChunk, error)
 }
 
 // ChunkedTokenDatabase is a concrete implementation of TokenDatabase.
@@ -131,12 +131,12 @@ func (db *ChunkedTokenDatabase) _makeKeyByHash(chunkHash string) CacheEngineKey 
 
 // ProcessTokens processes a slice of tokens by chunking them,
 // updating a rolling hash for every chunk, and building a CacheEngineKey for each.
-// It returns a slice of ProcessedToken with start/end indices and key.
-func (db *ChunkedTokenDatabase) ProcessTokens(tokens []uint32) ([]ProcessedToken, error) {
+// It returns a slice of ProcessedChunk with start/end indices and key.
+func (db *ChunkedTokenDatabase) ProcessTokens(tokens []uint32) ([]ProcessedChunk, error) {
 	totalLen := len(tokens)
 	tokenChunks := db.chunkTokens(tokens)
 	prefixHashes := db.prefixHashes(tokenChunks)
-	results := make([]ProcessedToken, 0, len(prefixHashes))
+	var results []ProcessedChunk
 
 	for i, hashVal := range prefixHashes {
 		startIdx := i * db.chunkSize
@@ -144,7 +144,7 @@ func (db *ChunkedTokenDatabase) ProcessTokens(tokens []uint32) ([]ProcessedToken
 		if endIdx > totalLen {
 			endIdx = totalLen
 		}
-		results = append(results, ProcessedToken{
+		results = append(results, ProcessedChunk{
 			Start: startIdx,
 			End:   endIdx,
 			Key:   db._makeKeyByHash(hashVal),
