@@ -56,7 +56,7 @@ func main() {
 	logger.Info("got pods", "pods", pods)
 
 	// Sleep 3 secs
-	time.Sleep(3 * time.Second)
+	time.Sleep(5 * time.Second) // with LRU backened need 5 secs of sleep...
 
 	// Get pods for the prompt
 	pods, err = kvCacheIndexer.GetPodScores(ctx, prompt, modelName)
