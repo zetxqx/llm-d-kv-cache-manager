@@ -1,4 +1,3 @@
-// File: prefix_hash_table.go
 package prefixhashtable
 
 import (

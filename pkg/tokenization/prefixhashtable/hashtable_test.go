@@ -1,4 +1,4 @@
-package prefixhashtable
+package prefixhashtable //nolint:testpackage // convenience
 
 import (
 	"testing"
