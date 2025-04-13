@@ -3,11 +3,10 @@ package main
 import (
 	"time"
 
+	"github.com/neuralmagic/distributed-kv-cache/pkg/kvcache"
+
 	"golang.org/x/net/context"
 	"k8s.io/klog/v2"
-
-	"github.com/neuralmagic/distributed-kv-cache/pkg/client"
-	"github.com/neuralmagic/distributed-kv-cache/pkg/kvindex"
 )
 
 /*
@@ -26,16 +25,16 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	logger := klog.FromContext(ctx)
 
-	kvCacheIndexer, err := client.NewKVCacheIndexer(client.Config{
-		LMCacheEngineConfig: kvindex.LMCacheEngineConfig{
+	kvCacheIndexer, err := kvcache.NewKVCacheIndexer(kvcache.Config{
+		LMCacheEngineConfig: kvcache.LMCacheEngineConfig{
 			ChunkSize: 256,
 		},
-		LMCacheEngineMetadata: kvindex.LMCacheEngineMetadata{
+		LMCacheEngineMetadata: kvcache.LMCacheEngineMetadata{
 			Fmt:       "vllm",
 			WorldSize: 1,
 			WorkerID:  0,
 		},
-		ScoringStrategy: client.LongestPrefixMatch,
+		ScoringStrategy: kvcache.LongestPrefixMatch,
 	})
 	if err != nil {
 		logger.Error(err, "failed to init KVCacheIndexer")
