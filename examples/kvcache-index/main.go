@@ -26,28 +26,18 @@ func main() {
 	logger := klog.FromContext(ctx)
 
 	// TODO: create a configuration module with default config option
-	kvCacheIndexer, err := kvcache.NewKVCacheIndexer(kvcache.Config{
-		LMCacheEngineConfig: kvcache.LMCacheEngineConfig{
-			ChunkSize: 256,
-		},
-		LMCacheEngineMetadata: kvcache.LMCacheEngineMetadata{
-			Fmt:       "vllm",
-			WorldSize: 1,
-			WorkerID:  0,
-		},
-		ScoringStrategy: kvcache.LongestPrefixMatch,
-	})
+	kvCacheIndexer, err := kvcache.NewKVCacheIndexer(kvcache.NewDefaultConfig())
 	if err != nil {
-		logger.Error(err, "failed to init KVCacheIndexer")
+		logger.Error(err, "failed to init Indexer")
 	}
 
-	logger.Info("created KVCacheIndexer")
+	logger.Info("created Indexer")
 
 	go kvCacheIndexer.Run(ctx)
-	logger.Info("started KVCacheIndexer")
+	logger.Info("started Indexer")
 
 	// Get pods for the prompt
-	pods, err := kvCacheIndexer.GetPodScores(ctx, prompt, modelName)
+	pods, err := kvCacheIndexer.GetPodScores(ctx, prompt, modelName, nil)
 	if err != nil {
 		logger.Error(err, "failed to get pod scores")
 		return
@@ -60,7 +50,7 @@ func main() {
 	time.Sleep(3 * time.Second)
 
 	// Get pods for the prompt
-	pods, err = kvCacheIndexer.GetPodScores(ctx, prompt, modelName)
+	pods, err = kvCacheIndexer.GetPodScores(ctx, prompt, modelName, nil)
 	if err != nil {
 		logger.Error(err, "failed to get pod scores")
 		return

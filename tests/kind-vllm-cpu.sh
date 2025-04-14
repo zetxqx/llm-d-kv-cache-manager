@@ -71,7 +71,7 @@ echo "📨  Applying Gateway and HTTPRoute..."
 kubectl apply -f https://github.com/kubernetes-sigs/gateway-api-inference-extension/raw/main/config/manifests/gateway/kgateway/gateway.yaml
 kubectl apply -f https://github.com/kubernetes-sigs/gateway-api-inference-extension/raw/main/config/manifests/gateway/kgateway/httproute.yaml
 
-echo "📨  Wait Gatewayto be ready..."
+echo "📨  Wait Gateway to be ready..."
 # sleep 30  # Give time for pod to create
 # kubectl wait --for=condition=Ready pod --selector=app.kubernetes.io/instance=inference-gateway --timeout=240s
 # Wait up to 2 minutes for the Gateway to get an IP
