@@ -1,4 +1,4 @@
-package tokenization
+package prefixstore
 
 import (
 	"github.com/daulet/tokenizers"
@@ -7,6 +7,7 @@ import (
 // Indexer interface defines the methods for managing tokenization data.
 // It allows looking up the longest tokenization prefix for a given
 // model-name and prompt.
+// TODO: generalize interface to a generic prefix-based store.
 type Indexer interface {
 	// AddTokenization adds the full tokenization of a string to the
 	// indexer for a given model.

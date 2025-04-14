@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/neuralmagic/distributed-kv-cache/pkg/prefixstore"
+
 	"k8s.io/client-go/util/workqueue"
 )
 
@@ -20,13 +22,13 @@ type Pool struct {
 	queue   workqueue.TypedRateLimitingInterface[Task]
 	wg      sync.WaitGroup
 
-	indexer   Indexer
+	indexer   prefixstore.Indexer
 	tokenizer Tokenizer // TODO: replace with map of active tokenizers
 }
 
 // NewTokenizationPool initializes a TokenizationPool with the specified number
 // of workers and the provided Indexer.
-func NewTokenizationPool(workers int, store Indexer) *Pool {
+func NewTokenizationPool(workers int, store prefixstore.Indexer) *Pool {
 	return &Pool{
 		workers:   workers,
 		queue:     workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[Task]()),

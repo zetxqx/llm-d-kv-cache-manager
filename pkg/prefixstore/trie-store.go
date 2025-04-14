@@ -1,4 +1,4 @@
-package tokenization
+package prefixstore
 
 import (
 	"sync"

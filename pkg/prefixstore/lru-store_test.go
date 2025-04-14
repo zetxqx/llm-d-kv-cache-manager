@@ -1,4 +1,4 @@
-package tokenization //nolint:testpackage // convenience
+package prefixstore //nolint:testpackage // convenience
 
 import (
 	"testing"

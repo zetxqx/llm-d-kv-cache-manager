@@ -25,6 +25,7 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	logger := klog.FromContext(ctx)
 
+	// TODO: create a configuration module with default config option
 	kvCacheIndexer, err := kvcache.NewKVCacheIndexer(kvcache.Config{
 		LMCacheEngineConfig: kvcache.LMCacheEngineConfig{
 			ChunkSize: 256,
@@ -56,7 +57,7 @@ func main() {
 	logger.Info("got pods", "pods", pods)
 
 	// Sleep 3 secs
-	time.Sleep(5 * time.Second) // with LRU backened need 5 secs of sleep...
+	time.Sleep(3 * time.Second)
 
 	// Get pods for the prompt
 	pods, err = kvCacheIndexer.GetPodScores(ctx, prompt, modelName)

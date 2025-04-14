@@ -1,4 +1,4 @@
-package tokenization
+package prefixstore
 
 import (
 	"fmt"
@@ -11,7 +11,7 @@ import (
 
 const (
 	// DefaultBlockSize defines how many tokens each block contains in the prefix cache.
-	DefaultBlockSize = 32
+	DefaultBlockSize = 256
 	// DefaultMaxCacheSize sets the maximum number of blocks the LRU cache can store.
 	DefaultMaxCacheSize = 500000
 )

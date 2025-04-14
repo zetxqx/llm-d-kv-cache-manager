@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/neuralmagic/distributed-kv-cache/pkg/prefixstore"
+
 	"k8s.io/klog/v2"
 
 	"github.com/neuralmagic/distributed-kv-cache/pkg/tokenization"
@@ -22,10 +24,10 @@ type Config struct {
 
 // KVCacheIndexer is a concrete implementation of the KVCacheIndex interface.
 type KVCacheIndexer struct {
-	tokensIndexer   tokenization.Indexer // gets tokens for a prompt
-	tokensProcessor TokenProcessor       // turns tokens to kv block keys
-	kvBlockIndexer  KVBlockIndexer       // looks up pods for block keys
-	kvBlockScorer   KVBlockScorer        // scores pods based on block hits
+	tokensIndexer   prefixstore.Indexer // gets tokens for a prompt
+	tokensProcessor TokenProcessor      // turns tokens to kv block keys
+	kvBlockIndexer  KVBlockIndexer      // looks up pods for block keys
+	kvBlockScorer   KVBlockScorer       // scores pods based on block hits
 
 	tokenizersPool *tokenization.Pool
 }
@@ -49,9 +51,9 @@ func NewKVCacheIndexer(cfg Config) (*KVCacheIndexer, error) {
 		return nil, fmt.Errorf("could not connect to Redis: %w", err)
 	}
 
-	tokensIndexer, err := tokenization.NewLRUTokenStore(&tokenization.LRUStoreConfig{
-		BlockSize: tokenization.DefaultBlockSize,
-		CacheSize: tokenization.DefaultMaxCacheSize,
+	tokensIndexer, err := prefixstore.NewLRUTokenStore(&prefixstore.LRUStoreConfig{
+		BlockSize: prefixstore.DefaultBlockSize,
+		CacheSize: prefixstore.DefaultMaxCacheSize,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create token indexer: %w", err)
