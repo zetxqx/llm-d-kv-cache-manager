@@ -25,7 +25,6 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	logger := klog.FromContext(ctx)
 
-	// TODO: create a configuration module with default config option
 	kvCacheIndexer, err := kvcache.NewKVCacheIndexer(kvcache.NewDefaultConfig())
 	if err != nil {
 		logger.Error(err, "failed to init Indexer")
