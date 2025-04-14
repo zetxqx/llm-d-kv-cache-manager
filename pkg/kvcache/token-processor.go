@@ -35,7 +35,7 @@ func DefaultTokenProcessorConfig() *TokenProcessorConfig {
 
 // TemporaryTokenProcessorConfig is a temporary structure to hold
 // configuration to align with the current LMCache state.
-// TODO: remove after updating LMCacheEngine
+// TODO: remove after updating LMCacheEngine.
 type TemporaryTokenProcessorConfig struct {
 	Fmt       string
 	WorldSize int
