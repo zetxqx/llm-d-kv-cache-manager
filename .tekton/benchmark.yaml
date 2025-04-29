@@ -40,4 +40,4 @@ spec:
         export OPENSHIFT_NAMESPACE="$(params.openshift_namespace)"
 
         echo "Running fmperf benchmark..."
-        python examples/example_llm.py || true
+        python examples/example_vllm.py || true
