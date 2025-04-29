@@ -1,0 +1,6 @@
+{
+  "dev-version": "0.0.4",
+  "dev-registry": "quay.io/llm-d/kvcache-manager-dev",
+  "prod-version": "0.0.3",
+  "prod-registry": "quay.io/llm-d/kvcache-manager"
+}

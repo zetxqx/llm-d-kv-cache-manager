@@ -1,0 +1,60 @@
+# Binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Build output
+/build
+/bin
+/dist
+
+# Dependency directories
+vendor/
+
+# Go workspace file
+go.work
+go.work.sum
+
+# Test cache
+*.coverprofile
+*.testresult
+*.prof
+*.tmp
+
+# IDEs and editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*.bak
+*.tmp
+
+# OS-specific
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Env/config
+.env
+.env.*
+config.yaml
+config.json
+
+# cgo build output (if any)
+*.a
+*.o
+*.cgo1.go
+*.cgo2.c
+_cgo_*
+
+# Gopls and tools
+.gopls/
+
+# Tokenizer binaries
+lib
