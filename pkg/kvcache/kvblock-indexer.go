@@ -1,12 +1,13 @@
 package kvcache
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
 	"k8s.io/apimachinery/pkg/util/sets"
+	"k8s.io/klog/v2"
 
-	"github.com/neuralmagic/distributed-kv-cache/pkg/utils"
 	"github.com/redis/go-redis/v9"
 	"golang.org/x/net/context"
 )
@@ -35,7 +36,7 @@ type KVBlockIndexer interface {
 	// 2. A map where the keys are those in (1) and the values are pod names.
 	// 3. An error if any occurred during the operation.
 	GetPodsForKeys(ctx context.Context,
-		keys []KVBlockKey, podIdentifierSet sets.Set[string]) ([]string, map[string]string, error)
+		keys []KVBlockKey, podIdentifierSet sets.Set[string]) ([]string, map[string][]string, error)
 }
 
 var _ KVBlockIndexer = &RedisKVBlockIndexer{}
@@ -92,45 +93,65 @@ func NewRedisKVBlockIndexer(config *KVBlockIndexerConfig) (KVBlockIndexer, error
 // 2. A map where the keys are those in (1) and the values are pod names.
 // 3. An error if any occurred during the operation.
 //
+// The function uses a Redis pipeline to optimize the retrieval of keys.
+// The function assumes that the redis structure is a hash where the keys are
+// the KVBlockKeys, the fields are the pod identifiers, and the values are some
+// associated data that we don't need to retrieve.
+//
 //nolint:gocritic // no need named return values here
 func (r *RedisKVBlockIndexer) GetPodsForKeys(ctx context.Context,
 	keys []KVBlockKey, podIdentifierSet sets.Set[string],
-) ([]string, map[string]string, error) {
-	pods := make(map[string]string)
-
-	redisKeys := utils.SliceMap(keys, func(key KVBlockKey) string {
-		return key.String()
-	})
-	// use redis.MGet to get all keys at once
-	values, err := r.RedisClient.MGet(ctx, redisKeys...).Result()
-	if err != nil {
-		return nil, nil, err
+) ([]string, map[string][]string, error) {
+	if len(keys) == 0 {
+		return nil, nil, nil
 	}
 
-	filterPods := len(podIdentifierSet) > 0
+	logger := klog.FromContext(ctx).WithName("RedisKVBlockIndexer")
+	podsPerKey := make(map[string][]string)
 
-	for i, value := range values { // values are "podIP:port", we only need podIP
-		if value == "" {
-			continue
-		}
+	// pipeline for single RTT
+	pipe := r.RedisClient.Pipeline()
+	results := make([]*redis.StringSliceCmd, len(keys))
+	redisKeys := make([]string, len(keys))
 
-		valueStr, ok := value.(string)
-		if !ok {
-			continue
-		}
-
-		parts := strings.Split(valueStr, ":")
-		if len(parts) != 2 {
-			continue
-		}
-
-		// check if the pod identifier is in the set
-		if filterPods && !podIdentifierSet.Has(parts[0]) {
-			continue
-		}
-
-		pods[redisKeys[i]] = parts[0]
+	// queue an HKeys command for each key in the pipeline
+	for i, key := range keys {
+		redisKey := key.String()
+		redisKeys[i] = redisKey
+		// HKeys gets all field names
+		results[i] = pipe.HKeys(ctx, redisKey)
 	}
 
-	return redisKeys, pods, nil
+	_, execErr := pipe.Exec(ctx)
+	if execErr != nil {
+		return nil, nil, fmt.Errorf("redis pipeline execution failed: %w", execErr)
+	}
+
+	filterPods := len(podIdentifierSet) > 0 // predicate for filtering
+	for i, cmd := range results {
+		currentRedisKey := redisKeys[i]
+
+		// cmd.Result() returns the slice of strings (pod IDs) which is the first layer in the mapping
+		pods, cmdErr := cmd.Result()
+		if cmdErr != nil {
+			podsPerKey[currentRedisKey] = []string{} // assign an empty slice
+			if !errors.Is(cmdErr, redis.Nil) {
+				logger.Error(cmdErr, "failed to get pods for key", "key", currentRedisKey)
+			}
+
+			continue
+		}
+
+		var filteredPods []string
+		for _, p := range pods {
+			ip := strings.SplitN(p, ":", 2)[0]
+			if !filterPods || podIdentifierSet.Has(ip) {
+				filteredPods = append(filteredPods, ip)
+			}
+		}
+
+		podsPerKey[currentRedisKey] = filteredPods
+	}
+
+	return redisKeys, podsPerKey, nil
 }
