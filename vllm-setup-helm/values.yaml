@@ -12,9 +12,9 @@ vllm:
 
   image:
     # -- VLLM image repository
-    repository: quay.io/vmaroon/llm-d
+    repository: quay.io/llm-d/llm-d-dev
     # -- VLLM image tag (overrides Chart.yaml appVersion if set)
-    tag: "sharing"
+    tag: "0.0.3-amd64"
     # -- VLLM image pull policy
     pullPolicy: IfNotPresent
 
@@ -69,7 +69,7 @@ vllm:
     VLLM_RPC_TIMEOUT: '1000000'
     LMCACHE_LOCAL_CPU: 'True'
     LMCACHE_ENABLE_DEBUG: 'True'
-    LMCACHE_MAX_LOCAL_CPU_SIZE: '20'
+    LMCACHE_MAX_LOCAL_CPU_SIZE: '40'
     LMCACHE_ENABLE_P2P: 'True'
     # LMCACHE_LOOKUP_URL will be set automatically based on redis service name
     # LMCACHE_DISTRIBUTED_URL will be set automatically based on pod IP

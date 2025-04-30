@@ -39,11 +39,13 @@ spec:
             - '-c'
           args:
             - |
-              export LMCACHE_DISTRIBUTED_URL=${POD_IP}:80 && \
+              export LMCACHE_DISTRIBUTED_URL=${POD_IP} && \
               vllm serve {{ .Values.vllm.model.name }} \
               --host 0.0.0.0 \
               --port 8000 \
-              --max-model-len {{ .Values.vllm.model.maxModelLen }} \
+              --trust-remote-code \
+              --enable-chunked-prefill \
+              --max_num_batched_tokens 1024 \
               --kv-transfer-config '{"kv_connector":"LMCacheConnectorV1","kv_role":"kv_both"}'
           ports:
             - name: http
@@ -59,10 +61,6 @@ spec:
           env:
             - name: HF_HOME
               value: {{ .Values.persistence.mountPath }}
-            - name: VLLM_ENABLE_V1_MULTIPROCESSING
-              value: "1"
-            - name: VLLM_WORKER_MULTIPROC_METHOD
-              value: spawn
             - name: POD_IP
               valueFrom:
                 fieldRef:

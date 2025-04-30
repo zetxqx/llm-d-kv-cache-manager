@@ -75,7 +75,7 @@ $(TOKENIZER_LIB):
 .PHONY: build
 build: check-go tokenizer-build ##
 	@printf "\033[33;1m==== Building ====\033[0m\n"
-	go build -ldflags="$(LDFLAGS)" -o bin/$(PROJECT_NAME) examples/kvcache-index/main.go
+	go build -ldflags="$(LDFLAGS)" -o bin/$(PROJECT_NAME) examples/kv-cache-index/main.go
 
 ##@ Container Build/Push
 
