@@ -3,7 +3,7 @@ package kvcache_test
 import (
 	"testing"
 
-	"github.com/neuralmagic/llm-d-kv-cache-manager/pkg/kvcache"
+	kvcache "github.com/neuralmagic/llm-d-kv-cache-manager/pkg/kv-cache"
 
 	"github.com/stretchr/testify/assert"
 )

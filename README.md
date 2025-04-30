@@ -6,7 +6,7 @@ High level slides can be found at [KVCache Manager](https://ibm-my.sharepoint.co
 
 ## Overview
 
-The code defines a [KVCacheIndexer](pkg/kvcache/indexer.go) module that efficiently maintains a global view of KVCache states and localities. 
+The code defines a [KVCacheIndexer](pkg/kv-cache/indexer.go) module that efficiently maintains a global view of KVCache states and localities. 
 In the current state of vLLM, the only available information on KVCache availability is that of the offloaded tensors to KVCache Engines via the Connector API.
 
 The `kvcache.Indexer` module is a pluggable Go package designed for use by orchestrators to enable KVCache-aware scheduling decisions. It will soon also be deployable as a gRPC server.
@@ -47,6 +47,6 @@ Disclaimer: currently, this module relies on vLLM/LMCache image: `lmcache/vllm-o
 
 - [KVCache Indexer](examples/kvcache-indexer/README.md): 
   - A reference implementation of using the KVCacheIndex module.
-- [KVCache Aware Scorer](examples/kvcache-aware-scorer/README.md): 
+- [KVCache Aware Scorer](examples/kv-cache-aware-scorer/README.md): 
   - A reference implementation of integrating the KVCacheIndex module in an inference-gateway based router with `Scorers`.
 

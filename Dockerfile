@@ -18,7 +18,7 @@ COPY go.sum go.sum
 RUN go mod download
 
 # Copy the go source
-COPY examples/kvcache-index/main.go cmd/cmd.go
+COPY examples/kv-cache-index/main.go cmd/cmd.go
 COPY . .
 
 # Build
@@ -27,13 +27,13 @@ COPY . .
 # the docker BUILDPLATFORM arg will be linux/arm64 when for Apple x86 it will be linux/amd64. Therefore,
 # by leaving it empty we can ensure that the container and binary shipped on it will have the same platform.
 
-RUN CGO_ENABLED=1 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -ldflags="-extldflags '-L$(pwd)/lib'" -a -o bin/kvcache-manager cmd/cmd.go
+RUN CGO_ENABLED=1 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -ldflags="-extldflags '-L$(pwd)/lib'" -a -o bin/kv-cache-manager cmd/cmd.go
 
 # Use distroless as minimal base image to package the manager binary
 # Refer to https://github.com/GoogleContainerTools/distroless for more details
 FROM registry.access.redhat.com/ubi9/ubi:latest
 WORKDIR /
-COPY --from=builder /workspace/bin/kvcache-manager /app/kvcache-manager
+COPY --from=builder /workspace/bin/kv-cache-manager /app/kv-cache-manager
 USER 65532:65532
 
 CMD ["sleep", "infinity"]

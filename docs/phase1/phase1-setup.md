@@ -39,7 +39,7 @@ LMCache config:
    value: 'vllm-p2p-engine-service:8200'
 ```
 
-The vLLM node was fed the prompt found in `cmd/kvcache-manager/main.go`.
+The vLLM node was fed the prompt found in `cmd/kv-cache-manager/main.go`.
 
 
 ## Usage
@@ -49,7 +49,7 @@ The vLLM node was fed the prompt found in `cmd/kvcache-manager/main.go`.
  export REDIS_HOST=<redis-host>
  export REDIS_PASSWORD=<redis-password>
 
- go run -ldflags="-extldflags '-L$(pwd)/lib'" cmd/kvcache-manager/main.go
+ go run -ldflags="-extldflags '-L$(pwd)/lib'" cmd/kv-cache-manager/main.go
 ```
 
 ## Note
