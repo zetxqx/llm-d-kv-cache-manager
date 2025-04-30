@@ -1,4 +1,4 @@
-# Distributed KVCache
+# KVCache Manager
 
 The configuration tested against uses `lmcache/vllm-openai:2025-03-10` image, with vLLM/LMCache configured as follows:
 
@@ -39,7 +39,7 @@ LMCache config:
    value: 'vllm-p2p-engine-service:8200'
 ```
 
-The vLLM node was fed the prompt found in `cmd/distributed-kv-cache/main.go`.
+The vLLM node was fed the prompt found in `cmd/kvcache-manager/main.go`.
 
 
 ## Usage
@@ -48,8 +48,8 @@ The vLLM node was fed the prompt found in `cmd/distributed-kv-cache/main.go`.
  export HF_TOKEN=<token>
  export REDIS_HOST=<redis-host>
  export REDIS_PASSWORD=<redis-password>
- 
- go run -ldflags="-extldflags '-L$(pwd)/lib'" cmd/distributed-kv-cache/main.go
+
+ go run -ldflags="-extldflags '-L$(pwd)/lib'" cmd/kvcache-manager/main.go
 ```
 
 ## Note
