@@ -5,7 +5,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/neuralmagic/kvcache-manager/pkg/kvcache"
+	"github.com/neuralmagic/llm-d-kv-cache-manager/pkg/kvcache"
 	"k8s.io/klog/v2"
 )
 

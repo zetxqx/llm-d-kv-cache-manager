@@ -9,8 +9,8 @@ import (
 	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/suite"
 
-	"github.com/neuralmagic/kvcache-manager/pkg/kvcache"
-	"github.com/neuralmagic/kvcache-manager/pkg/tokenization"
+	"github.com/neuralmagic/llm-d-kv-cache-manager/pkg/kvcache"
+	"github.com/neuralmagic/llm-d-kv-cache-manager/pkg/tokenization"
 )
 
 const (
