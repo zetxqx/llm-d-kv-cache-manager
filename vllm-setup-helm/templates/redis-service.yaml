@@ -1,0 +1,19 @@
+{{- if .Values.redis.enabled }}
+kind: Service
+apiVersion: v1
+metadata:
+  name: {{ .Release.Name }}-{{ .Values.redis.service.nameSuffix }}
+  namespace: {{ .Release.Namespace | default .Values.namespace }}
+  labels:
+    {{- include "chart.labels" . | nindent 4 }}
+    app.kubernetes.io/component: redis-lookup-server
+spec:
+  ports:
+    - name: lookupserver-port
+      protocol: TCP
+      port: {{ .Values.redis.service.port }}
+      targetPort: {{ .Values.redis.service.targetPort }}
+  type: {{ .Values.redis.service.type }}
+  selector:
+     {{- include "chart.redisSelectorLabels" . | nindent 4 }}
+{{- end }}

@@ -1,0 +1,113 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-vllm-{{ .Values.vllm.model.label }}
+  namespace: {{ .Release.Namespace | default .Values.namespace }}
+  labels:
+    {{- include "chart.labels" . | nindent 4 }}
+    app.kubernetes.io/component: vllm
+spec:
+  replicas: {{ .Values.vllm.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "chart.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: vllm
+      {{- if and .Values.vllm.poolLabelKey .Values.vllm.poolLabelValue }}
+      {{ .Values.vllm.poolLabelKey }}: {{ .Values.vllm.poolLabelValue }}
+      {{- end }}
+  template:
+    metadata:
+      labels:
+        {{- include "chart.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: vllm
+        {{- if and .Values.vllm.poolLabelKey .Values.vllm.poolLabelValue }}
+        {{ .Values.vllm.poolLabelKey }}: {{ .Values.vllm.poolLabelValue }}
+        {{- end }}
+    spec:
+    {{- if .Values.persistence.enabled }}
+      volumes:
+        - name: vllm-p2p-storage
+          persistentVolumeClaim:
+            claimName: {{ include "chart.pvcName" . }}
+    {{- end }}
+      containers:
+        - name: vllm
+          image: {{ include "chart.vllmImage" . }}
+          imagePullPolicy: {{ .Values.vllm.image.pullPolicy }}
+          command:
+            - /bin/sh
+            - '-c'
+          args:
+            - |
+              export LMCACHE_DISTRIBUTED_URL=${POD_IP}:80 && \
+              vllm serve {{ .Values.vllm.model.name }} \
+              --host 0.0.0.0 \
+              --port 8000 \
+              --max-model-len {{ .Values.vllm.model.maxModelLen }} \
+              --kv-transfer-config '{"kv_connector":"LMCacheConnectorV1","kv_role":"kv_both"}'
+          ports:
+            - name: http
+              containerPort: 8000
+              protocol: TCP
+            - name: lmcache-dist # Assuming port 80 is used for LMCACHE_DISTRIBUTED_URL
+              containerPort: 80
+              protocol: TCP
+          livenessProbe:
+            {{- toYaml .Values.vllm.livenessProbe | nindent 12 }}
+          startupProbe:
+            {{- toYaml .Values.vllm.startupProbe | nindent 12 }}
+          env:
+            - name: HF_HOME
+              value: {{ .Values.persistence.mountPath }}
+            - name: VLLM_ENABLE_V1_MULTIPROCESSING
+              value: "1"
+            - name: VLLM_WORKER_MULTIPROC_METHOD
+              value: spawn
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: status.podIP
+            - name: HF_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secret.name }}
+                  key: {{ include "chart.secretKeyName" . }}
+            {{- if .Values.redis.enabled }}
+            - name: LMCACHE_LOOKUP_URL
+              value: {{ include "chart.redisServiceUrl" . }}
+            {{- end }}
+            {{- range $key, $val := .Values.vllm.extraEnv }}
+            - name: {{ $key }}
+              value: {{ $val | quote }}
+            {{- end }}
+          resources:
+            limits:
+              {{- with .Values.vllm.resources.limits }}
+              {{- toYaml . | nindent 14 }}
+              {{- end }}
+            requests:
+              {{- with .Values.vllm.resources.requests }}
+              {{- toYaml . | nindent 14 }}
+              {{- end }}
+          {{- if .Values.persistence.enabled }}
+          volumeMounts:
+            - name: vllm-p2p-storage
+              mountPath: {{ .Values.persistence.mountPath }}
+          {{- end }}
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          securityContext:
+            runAsNonRoot: false
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30
+      dnsPolicy: ClusterFirst
+      securityContext: {}
+      schedulerName: default-scheduler
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: "100%"
+  revisionHistoryLimit: 10
+  progressDeadlineSeconds: 1200

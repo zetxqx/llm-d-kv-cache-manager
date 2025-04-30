@@ -1,0 +1,141 @@
+# -- Target namespace for all resources
+namespace: kvcache-manager
+
+# -- VLLM Deployment Configuration
+vllm:
+  # -- Number of VLLM replicas
+  replicaCount: 4
+  # -- Inference pool label key
+  poolLabelKey: app
+  # -- Inference pool label value
+  poolLabelValue: vllm-llama3-8b-instruct
+
+  image:
+    # -- VLLM image repository
+    repository: quay.io/vmaroon/llm-d
+    # -- VLLM image tag (overrides Chart.yaml appVersion if set)
+    tag: "sharing"
+    # -- VLLM image pull policy
+    pullPolicy: IfNotPresent
+
+  model:
+    # -- Hugging Face model name (e.g., mistralai/Mistral-7B-Instruct-v0.2)
+    name: meta-llama/Llama-3.1-8B-Instruct
+    # -- Label used for Kubernetes resources related to this model instance
+    label: llama3-8b-instruct
+    # -- Maximum model length parameter for VLLM
+    maxModelLen: 16384
+
+  # -- VLLM container resource requests and limits
+  resources:
+    limits:
+      # -- GPU limit (e.g., '1')
+      nvidia.com/gpu: '1'
+    requests:
+      # -- CPU request (e.g., '10')
+      cpu: '10'
+      # -- Memory request (e.g., 40Gi)
+      memory: 40Gi
+      # -- GPU request (must match limit for whole GPUs)
+      nvidia.com/gpu: '1'
+
+  # -- Liveness probe configuration
+  livenessProbe:
+    httpGet:
+      path: /health
+      port: 8000
+      scheme: HTTP
+    initialDelaySeconds: 15
+    timeoutSeconds: 1
+    periodSeconds: 10
+    successThreshold: 1
+    failureThreshold: 3
+
+  # -- Startup probe configuration
+  startupProbe:
+    httpGet:
+      path: /health
+      port: 8000
+      scheme: HTTP
+    initialDelaySeconds: 15
+    timeoutSeconds: 1
+    periodSeconds: 10
+    successThreshold: 1
+    failureThreshold: 60 # Higher threshold for startup
+
+  # -- Additional environment variables for VLLM container
+  extraEnv:
+    LMCACHE_USE_EXPERIMENTAL: 'True'
+    VLLM_RPC_TIMEOUT: '1000000'
+    LMCACHE_LOCAL_CPU: 'True'
+    LMCACHE_ENABLE_DEBUG: 'True'
+    LMCACHE_MAX_LOCAL_CPU_SIZE: '20'
+    LMCACHE_ENABLE_P2P: 'True'
+    # LMCACHE_LOOKUP_URL will be set automatically based on redis service name
+    # LMCACHE_DISTRIBUTED_URL will be set automatically based on pod IP
+
+# -- Secret Configuration for Hugging Face Token
+secret:
+  # -- Name of the Kubernetes secret object
+  name: vllm-p2p-secrets
+  # -- (Required if create=true) The raw Hugging Face token. Provide via --set or a values file.
+  # @ignored ref: https://helm.sh/docs/chart_best_practices/values/#secrets
+  hfTokenValue: ""
+  # -- Set to true to create the secret. If false, assumes secret 'name' already exists.
+  # @default -- false
+  create: false
+  # -- Key name within the secret (will be formatted like 'hf_token_<model.label>')
+  keyPrefix: hf_token
+
+# -- Persistence Configuration using PVC
+persistence:
+  # -- Enable persistence using a PersistentVolumeClaim
+  enabled: false
+  # -- PVC name (will be templated)
+  # name: vllm-p2p-mistral-1-storage-claim
+  # -- PVC access mode
+  accessModes:
+    - ReadWriteOnce
+  # -- PVC storage size
+  size: 50Gi
+  # -- Optional: Storage class name for the PVC
+  storageClassName: "ibmc-vpc-block-10iops-tier"
+  # -- Mount path inside the VLLM container
+  mountPath: /data
+
+# -- Redis Lookup Server Configuration
+redis:
+  # -- Enable Redis deployment
+  enabled: true
+  # -- Redis deployment name suffix
+  nameSuffix: lookup-server
+  # -- Number of Redis replicas
+  replicaCount: 1
+  image:
+    # -- Redis image repository
+    repository: redis
+    # -- Redis image tag
+    tag: latest
+    # -- Redis image pull policy
+    pullPolicy: IfNotPresent
+  # -- Redis container resource requests and limits
+  resources:
+    limits:
+      # -- Redis CPU limit
+      cpu: '4'
+      # -- Redis memory limit
+      memory: 10G
+    requests:
+      # -- Redis CPU request
+      cpu: '4'
+      # -- Redis memory request
+      memory: 8G
+  service:
+    # -- Redis service name suffix
+    nameSuffix: lookup-server-service
+    # -- Redis service type
+    type: ClusterIP
+    # -- Port the service exposes
+    port: 8100
+    # -- Target port on the Redis container
+    targetPort: 6379 # Default Redis port
