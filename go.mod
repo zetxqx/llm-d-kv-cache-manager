@@ -1,4 +1,4 @@
-module github.com/neuralmagic/kvcache-manager
+module github.com/neuralmagic/llm-d-kv-cache-manager
 
 go 1.24.1
 
