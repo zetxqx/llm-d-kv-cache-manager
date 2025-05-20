@@ -12,7 +12,7 @@ TARGETOS ?= $(shell go env GOOS)
 TARGETARCH ?= $(shell go env GOARCH)
 
 TOOLS_DIR := $(shell pwd)/hack/tools
-CONTAINER_TOOL := $(shell command -v docker >/dev/null 2>&1 && echo docker || command -v podman >/dev/null 2>&1 && echo podman || echo "")
+CONTAINER_TOOL := $(shell { command -v docker >/dev/null 2>&1 && echo docker; } || { command -v podman >/dev/null 2>&1 && echo podman; } || echo "")
 BUILDER := $(shell command -v buildah >/dev/null 2>&1 && echo buildah || echo $(CONTAINER_TOOL))
 
 # go source files
@@ -37,8 +37,6 @@ $(TOKENIZER_LIB):
 	mkdir -p lib
 	curl -L https://github.com/daulet/tokenizers/releases/download/$(TOKENIZER_RELEASE)/libtokenizers.$(TARGETOS)-$(TARGETARCH).tar.gz | tar -xz -C lib
 	ranlib lib/*.a
-
-
 
 ##@ Precommit code checks --
 .PHONY: precommit lint tidy-go copr-fix

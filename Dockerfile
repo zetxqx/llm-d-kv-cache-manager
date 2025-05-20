@@ -17,12 +17,10 @@ FROM quay.io/projectquay/golang:1.24 AS builder
 ARG TARGETOS
 ARG TARGETARCH
 
-ENV GOPROXY=https://goproxy.io,direct
-
 WORKDIR /workspace
 
 USER root
-RUN dnf install -y gcc-c++ libstdc++ libstdc++-devel && dnf clean all
+RUN dnf install -y gcc-c++ libstdc++ libstdc++-devel clang && dnf clean all
 
 # Copy the Go Modules manifests
 COPY go.mod go.mod
@@ -34,6 +32,11 @@ RUN go mod download
 # Copy the go source
 COPY examples/kv-cache-index/main.go cmd/cmd.go
 COPY . .
+
+# HuggingFace tokenizer bindings
+RUN mkdir -p lib
+RUN curl -L https://github.com/daulet/tokenizers/releases/download/v1.20.2/libtokenizers.${TARGETOS}-${TARGETARCH}.tar.gz | tar -xz -C lib
+RUN ranlib lib/*.a
 
 # Build
 # the GOARCH has not a default value to allow the binary be built according to the host where the command
