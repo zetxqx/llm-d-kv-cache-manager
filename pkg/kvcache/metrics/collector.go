@@ -2,6 +2,7 @@ package metrics
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -46,9 +47,13 @@ func Collectors() []prometheus.Collector {
 	}
 }
 
+var registerMetricsOnce = sync.Once{}
+
 // Register registers all metrics with K8s registry.
 func Register() {
-	metrics.Registry.MustRegister(Collectors()...)
+	registerMetricsOnce.Do(func() {
+		metrics.Registry.MustRegister(Collectors()...)
+	})
 }
 
 // StartMetricsLogging spawns a goroutine that logs current metric values every
