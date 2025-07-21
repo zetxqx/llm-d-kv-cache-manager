@@ -27,7 +27,7 @@ help: ## Print help
 LDFLAGS ?= -extldflags '-L$(shell pwd)/lib'
 CGO_ENABLED=1
 TOKENIZER_LIB = lib/libtokenizers.a
-TOKENIZER_RELEASE = v1.20.2
+TOKENIZER_RELEASE = v1.22.1
 
 .PHONY: download-tokenizer
 download-tokenizer: $(TOKENIZER_LIB)

@@ -4,7 +4,7 @@ go 1.24.1
 
 require (
 	github.com/cespare/xxhash/v2 v2.3.0
-	github.com/daulet/tokenizers v1.20.2
+	github.com/daulet/tokenizers v1.22.1
 	github.com/fxamacker/cbor/v2 v2.7.0
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/pebbe/zmq4 v1.4.0
