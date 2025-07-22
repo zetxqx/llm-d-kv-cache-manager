@@ -27,15 +27,16 @@ help: ## Print help
 LDFLAGS ?= -extldflags '-L$(shell pwd)/lib'
 CGO_ENABLED=1
 TOKENIZER_LIB = lib/libtokenizers.a
-TOKENIZER_RELEASE = v1.22.1
+# Extract RELEASE_VERSION from Dockerfile
+TOKENIZER_VERSION := $(shell grep '^ARG RELEASE_VERSION=' Dockerfile | cut -d'=' -f2)
 
 .PHONY: download-tokenizer
 download-tokenizer: $(TOKENIZER_LIB)
 $(TOKENIZER_LIB):
 	## Download the HuggingFace tokenizer bindings.
-	@echo "Downloading HuggingFace tokenizer bindings..."
+	@echo "Downloading HuggingFace tokenizer bindings for version v$(TOKENIZER_VERSION)..."
 	mkdir -p lib
-	curl -L https://github.com/daulet/tokenizers/releases/download/$(TOKENIZER_RELEASE)/libtokenizers.$(TARGETOS)-$(TARGETARCH).tar.gz | tar -xz -C lib
+	curl -L https://github.com/daulet/tokenizers/releases/download/v$(TOKENIZER_VERSION)/libtokenizers.$(TARGETOS)-$(TARGETARCH).tar.gz | tar -xz -C lib
 	ranlib lib/*.a
 
 ##@ Precommit code checks --

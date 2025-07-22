@@ -46,6 +46,8 @@ func getKVCacheIndexerConfig() *kvcache.Config {
 		config.TokenizersPoolConfig.HuggingFaceToken = huggingFaceToken
 	}
 
+	config.TokenProcessorConfig.BlockSize = 256
+
 	return config
 }
 
