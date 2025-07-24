@@ -34,9 +34,9 @@ TOKENIZER_VERSION := $(shell grep '^ARG RELEASE_VERSION=' Dockerfile | cut -d'='
 download-tokenizer: $(TOKENIZER_LIB)
 $(TOKENIZER_LIB):
 	## Download the HuggingFace tokenizer bindings.
-	@echo "Downloading HuggingFace tokenizer bindings for version v$(TOKENIZER_VERSION)..."
+	@echo "Downloading HuggingFace tokenizer bindings for version $(TOKENIZER_VERSION)..."
 	mkdir -p lib
-	curl -L https://github.com/daulet/tokenizers/releases/download/v$(TOKENIZER_VERSION)/libtokenizers.$(TARGETOS)-$(TARGETARCH).tar.gz | tar -xz -C lib
+	curl -L https://github.com/daulet/tokenizers/releases/download/$(TOKENIZER_VERSION)/libtokenizers.$(TARGETOS)-$(TARGETARCH).tar.gz | tar -xz -C lib
 	ranlib lib/*.a
 
 ##@ Precommit code checks --
