@@ -16,9 +16,9 @@ vllm:
 
   image:
     # -- VLLM image repository
-    repository: quay.io/oroz/llm-d
+    repository: vllm/vllm-openai
     # -- VLLM image tag (overrides Chart.yaml appVersion if set)
-    tag: "offloading"
+    tag: "v0.10.0"
     # -- VLLM image pull policy
     pullPolicy: IfNotPresent
 
