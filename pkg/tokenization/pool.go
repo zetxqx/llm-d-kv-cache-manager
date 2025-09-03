@@ -27,26 +27,39 @@ import (
 	"github.com/llm-d/llm-d-kv-cache-manager/pkg/tokenization/prefixstore"
 )
 
-const defaultWorkers = 5
+const (
+	defaultWorkers               = 5
+	defaultMinPrefixOverlapRatio = 0.8
+)
 
 // Config holds the configuration for the TokenizationPool.
 type Config struct {
+	// Number of worker goroutines for processing tokenization tasks.
 	WorkersCount int `json:"workersCount"`
+	// Minimum overlap ratio to skip full tokenization and use cached prefix tokens.
+	MinPrefixOverlapRatio float64 `json:"minPrefixOverlapRatio"`
 	*HFTokenizerConfig
 }
 
 // DefaultConfig returns a default configuration for the TokenizationPool.
 func DefaultConfig() *Config {
 	return &Config{
-		WorkersCount:      defaultWorkers,
-		HFTokenizerConfig: DefaultHFTokenizerConfig(),
+		WorkersCount:          defaultWorkers,
+		MinPrefixOverlapRatio: defaultMinPrefixOverlapRatio,
+		HFTokenizerConfig:     DefaultHFTokenizerConfig(),
 	}
+}
+
+// tokenizationResponse holds the result of a tokenization operation.
+type tokenizationResponse struct {
+	Tokens []uint32
 }
 
 // Task represents a unit of work for tokenizing a prompt.
 type Task struct {
 	Prompt    string
 	ModelName string
+	ResultCh  chan<- tokenizationResponse // nil => fire-and-forget
 }
 
 // Pool encapsulates the queue, worker pool, and token indexer.
@@ -54,9 +67,15 @@ type Pool struct {
 	workers int
 	queue   workqueue.TypedRateLimitingInterface[Task]
 	wg      sync.WaitGroup
+	indexer prefixstore.Indexer
 
-	indexer   prefixstore.Indexer
+	// Tokenizer caches multiple HuggingFace tokenizers in memory.
+	// The cache is shared between all pool workers. Since each tokenizer
+	// is immutable, Encode calls are safe for concurrent use without locks.
 	tokenizer Tokenizer
+
+	// Minimum overlap ratio to skip full tokenization and use cached prefix tokens.
+	minPrefixOverlapRatio float64
 }
 
 // NewTokenizationPool initializes a TokenizationPool with the specified number
@@ -72,21 +91,36 @@ func NewTokenizationPool(config *Config, store prefixstore.Indexer) (*Pool, erro
 	}
 
 	return &Pool{
-		workers:   config.WorkersCount,
-		queue:     workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[Task]()),
-		indexer:   store,
-		tokenizer: cachingTokenizer,
+		workers:               config.WorkersCount,
+		queue:                 workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[Task]()),
+		indexer:               store,
+		tokenizer:             cachingTokenizer,
+		minPrefixOverlapRatio: config.MinPrefixOverlapRatio,
 	}, nil
 }
 
-// AddTask enqueues a new tokenization task.
+// EnqueueTokenization enqueues a new tokenization task.
 // This method only enqueues the task and does not start processing it.
-func (pool *Pool) AddTask(prompt, modelName string) {
+func (pool *Pool) EnqueueTokenization(prompt, modelName string) {
 	task := Task{
 		Prompt:    prompt,
 		ModelName: modelName,
 	}
 	pool.queue.Add(task)
+}
+
+// Tokenize queues a task and blocks until the final result is available.
+func (pool *Pool) Tokenize(prompt, modelName string) []uint32 {
+	resultCh := make(chan tokenizationResponse, 1)
+	pool.queue.Add(Task{
+		Prompt:    prompt,
+		ModelName: modelName,
+		ResultCh:  resultCh,
+	})
+
+	res := <-resultCh
+	tokens := res.Tokens
+	return tokens
 }
 
 // Run launches worker goroutines that process tasks until the context is
@@ -122,17 +156,35 @@ func (pool *Pool) workerLoop(_ int) {
 	}
 }
 
-// processTask tokenizes the prompt, extracts a prefix, and updates the
-// indexer.
+// processTask tokenizes the prompt and updates the indexer.
+// It sends exactly one response (success or error) if ResultCh is provided.
 func (pool *Pool) processTask(task Task) error {
-	tokenIds, offsets, err := pool.tokenizer.Encode(task.Prompt, task.ModelName)
-	if err != nil {
-		klog.Error(err, " failed to encode token", " prompt ", task.Prompt, " modelName ", task.ModelName)
-		return err
+	tokenIDs, overlapRatio := pool.indexer.FindLongestContainedTokens(task.Prompt, task.ModelName)
+
+	// if the overlap ratio is low, get the full tokenization
+	if overlapRatio < pool.minPrefixOverlapRatio {
+		tokens, offsets, err := pool.tokenizer.Encode(task.Prompt, task.ModelName)
+		if err != nil {
+			klog.Error(err, "failed to encode tokens", "prompt", task.Prompt, "modelName", task.ModelName)
+			return err
+		}
+
+		// update the indexer with the new tokenization
+		if e := pool.indexer.AddTokenization(task.ModelName, task.Prompt, tokens, offsets); e != nil {
+			err = fmt.Errorf("tokenization failed for model %s: %w", task.ModelName, e)
+			return err
+		}
+
+		tokenIDs = tokens
 	}
 
-	if err := pool.indexer.AddTokenization(task.ModelName, task.Prompt, tokenIds, offsets); err != nil {
-		return fmt.Errorf("tokenization failed for model %s: %w", task.ModelName, err)
+	// On success, send the response if a channel is provided and close the channel.
+	if task.ResultCh != nil {
+		resp := tokenizationResponse{
+			Tokens: tokenIDs,
+		}
+		task.ResultCh <- resp
+		close(task.ResultCh)
 	}
 
 	return nil

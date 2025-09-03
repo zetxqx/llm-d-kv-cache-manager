@@ -19,6 +19,8 @@ package tokenization
 
 import (
 	"context"
+	"math/rand"
+	"strings"
 	"testing"
 	"time"
 
@@ -26,7 +28,21 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+
+	"github.com/llm-d/llm-d-kv-cache-manager/pkg/tokenization/prefixstore"
 )
+
+const (
+	benchmarkMaxWords    = 1_000
+	benchmarkWordLength  = 2
+	benchmarkSeed        = 42
+	benchmarkWorkerCount = 5
+)
+
+var benchmarkModels = []string{
+	"google-bert/bert-base-uncased",
+	"openai-community/gpt2",
+}
 
 // MockTokenizer implements the Tokenizer interface for testing.
 type MockTokenizer struct {
@@ -48,9 +64,11 @@ func (m *MockIndexer) AddTokenization(modelName, prompt string, tokens []uint32,
 	return args.Error(0)
 }
 
-func (m *MockIndexer) FindLongestContainedTokens(prompt, modelName string) []uint32 {
+//nolint:gocritic // unnamedResult: tokens and overlapRatio are self-explanatory from context
+func (m *MockIndexer) FindLongestContainedTokens(prompt, modelName string) ([]uint32, float64) {
 	args := m.Called(prompt, modelName)
-	return args.Get(0).([]uint32) //nolint:errcheck // unused mock
+	tokens := args.Get(0).([]uint32) //nolint:errcheck // unused mock
+	return tokens, 0.0
 }
 
 func TestPool_ProcessTask(t *testing.T) {
@@ -58,9 +76,10 @@ func TestPool_ProcessTask(t *testing.T) {
 	mockTokenizer := &MockTokenizer{}
 
 	pool := &Pool{
-		workers:   1,
-		indexer:   mockIndexer,
-		tokenizer: mockTokenizer,
+		workers:               1,
+		indexer:               mockIndexer,
+		tokenizer:             mockTokenizer,
+		minPrefixOverlapRatio: defaultMinPrefixOverlapRatio,
 	}
 
 	task := Task{
@@ -71,6 +90,9 @@ func TestPool_ProcessTask(t *testing.T) {
 	// Setup specific mock return values
 	expectedTokens := []uint32{12345, 67890, 11111}
 	expectedOffsets := []tokenizers.Offset{{0, 5}, {6, 11}}
+
+	// Mock FindLongestContainedTokens to return low overlap ratio
+	mockIndexer.On("FindLongestContainedTokens", task.Prompt, task.ModelName).Return([]uint32{}, 0.0)
 
 	mockTokenizer.On("Encode", task.Prompt, task.ModelName).Return(expectedTokens, expectedOffsets, nil)
 
@@ -97,15 +119,17 @@ func TestPool_RunIntegration(t *testing.T) {
 
 	// Setup mock expectations for each prompt
 	for _, prompt := range prompts {
+		mockIndexer.On("FindLongestContainedTokens", prompt, testModelName).Return([]uint32{}, 0.0)
 		mockIndexer.On("AddTokenization", testModelName, prompt,
 			mock.Anything, mock.Anything).Return(nil).Once()
 	}
 
 	config := &Config{
-		WorkersCount: 2,
+		WorkersCount: 5,
 		HFTokenizerConfig: &HFTokenizerConfig{
 			TokenizersCacheDir: t.TempDir(),
 		},
+		MinPrefixOverlapRatio: defaultMinPrefixOverlapRatio,
 	}
 
 	pool, err := NewTokenizationPool(config, mockIndexer)
@@ -116,7 +140,7 @@ func TestPool_RunIntegration(t *testing.T) {
 	defer cancel()
 
 	for _, prompt := range prompts {
-		pool.AddTask(prompt, testModelName)
+		pool.EnqueueTokenization(prompt, testModelName)
 	}
 
 	// Run pool
@@ -131,4 +155,115 @@ func TestPool_RunIntegration(t *testing.T) {
 	<-done
 
 	mockIndexer.AssertExpectations(t)
+}
+
+func generateRandomSentence(wordLength, maxWords int, rng *rand.Rand) string {
+	numWords := rng.Intn(maxWords) + 1
+	words := make([]string, numWords)
+
+	for i := range numWords {
+		word := make([]byte, wordLength)
+		for j := range wordLength {
+			word[j] = byte('a' + rng.Intn(26))
+		}
+		words[i] = string(word)
+	}
+
+	return strings.Join(words, " ")
+}
+
+func setupStressTest(b *testing.B) *Pool {
+	b.Helper()
+
+	config := &Config{
+		WorkersCount: benchmarkWorkerCount,
+		HFTokenizerConfig: &HFTokenizerConfig{
+			TokenizersCacheDir: b.TempDir(),
+		},
+		MinPrefixOverlapRatio: defaultMinPrefixOverlapRatio,
+	}
+
+	inMemoryIndexer, err := prefixstore.NewLRUTokenStore(nil)
+	require.NoError(b, err)
+
+	pool, err := NewTokenizationPool(config, inMemoryIndexer)
+	require.NoError(b, err)
+
+	for _, modelName := range benchmarkModels {
+		_, _, err := pool.tokenizer.Encode("", modelName)
+		require.NoError(b, err)
+	}
+	return pool
+}
+
+func BenchmarkAsyncTokenizationStress(b *testing.B) {
+	if testing.Short() {
+		b.Skip("Skipping tokenizer integration test in short mode")
+	}
+
+	pool := setupStressTest(b)
+
+	// Return RNG for on-demand prompt generation
+	rng := rand.New(rand.NewSource(benchmarkSeed)) //nolint:gosec // Test code - weak random is acceptable
+
+	// Generate and enqueue prompts on-the-fly to avoid memory bloat
+	for i := range b.N {
+		prompt := generateRandomSentence(benchmarkWordLength, benchmarkMaxWords, rng)
+		modelName := benchmarkModels[i%len(benchmarkModels)]
+		pool.EnqueueTokenization(prompt, modelName)
+	}
+
+	// Create context for the pool
+	ctx, cancel := context.WithCancel(context.Background())
+
+	// Run pool
+	go pool.Run(ctx)
+
+	b.ResetTimer()
+
+	// when poo gets empty pool.queue.Len() == 0 call cancel to the context:
+	for pool.queue.Len() > 0 {
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	b.StopTimer()
+	cancel()
+
+	frequency := float64(b.N) / b.Elapsed().Seconds()
+	b.Logf("Processed %d tasks in %v (%.2f tasks/sec)",
+		b.N, b.Elapsed(), frequency)
+}
+
+func BenchmarkSyncTokenizationStress(b *testing.B) {
+	if testing.Short() {
+		b.Skip("Skipping tokenizer integration test in short mode")
+	}
+
+	pool := setupStressTest(b)
+
+	// Return RNG for on-demand prompt generation
+	rng := rand.New(rand.NewSource(benchmarkSeed)) //nolint:gosec // Test code - weak random is acceptable
+
+	// Create context for the pool
+	ctx, cancel := context.WithCancel(context.Background())
+
+	// Run pool
+	go pool.Run(ctx)
+
+	// Now that workers are running, reset benchmark timer
+	b.ResetTimer()
+
+	// Submit tokenization requests in a loop until limit
+	for i := 0; b.Loop(); i++ {
+		prompt := generateRandomSentence(benchmarkWordLength, benchmarkMaxWords, rng)
+		model := benchmarkModels[i%len(benchmarkModels)]
+		pool.Tokenize(prompt, model)
+	}
+
+	b.StopTimer()
+	cancel()
+
+	frequency := float64(b.N) / b.Elapsed().Seconds()
+	b.Logf("Processed %d tasks in %v (%.2f tasks/sec)",
+		b.N, b.Elapsed(), frequency)
 }

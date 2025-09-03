@@ -65,13 +65,17 @@ func (s *ContainedTokenStore) AddTokenization(modelName string, prompt string, t
 
 // FindLongestContainedTokens finds the sequence of contained tokens for the
 // longest matching prefix.
-func (s *ContainedTokenStore) FindLongestContainedTokens(prompt, modelName string) []uint32 {
+// The function returns the matched tokens and the ratio of the prompt
+// that was covered by the matched tokens.
+//
+//nolint:gocritic // unnamedResult: tokens and overlapRatio are self-explanatory from context
+func (s *ContainedTokenStore) FindLongestContainedTokens(prompt, modelName string) ([]uint32, float64) {
 	s.mu.RLock()
 	trie, ok := s.tries[modelName]
 	s.mu.RUnlock()
 
 	if !ok {
-		return nil
+		return nil, 0.0
 	}
 
 	return trie.FindLongestContainedTokens(prompt)
@@ -184,7 +188,9 @@ func (t *containedTokenTrie) addFullTokenization(prompt string, tokens []uint32,
 
 // FindLongestContainedTokens traverses the Trie for the prompt and collects
 // the sequence of last contained tokens encountered.
-func (t *containedTokenTrie) FindLongestContainedTokens(prompt string) []uint32 {
+//
+//nolint:gocritic // unnamedResult: tokens and overlapRatio are self-explanatory from context
+func (t *containedTokenTrie) FindLongestContainedTokens(prompt string) ([]uint32, float64) {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 
@@ -198,7 +204,8 @@ func (t *containedTokenTrie) FindLongestContainedTokens(prompt string) []uint32 
 		lastTokenIdxSeen = node.lastContainedTokenIndex
 	}
 
-	for _, char := range prompt {
+	overlapRatio := 0.0
+	for i, char := range prompt {
 		child, ok := node.children[char]
 		if !ok {
 			break
@@ -210,7 +217,9 @@ func (t *containedTokenTrie) FindLongestContainedTokens(prompt string) []uint32 
 			containedTokens = append(containedTokens, node.lastContainedTokenID)
 			lastTokenIdxSeen = node.lastContainedTokenIndex
 		}
+
+		overlapRatio = float64(i+1) / float64(len(prompt))
 	}
 
-	return containedTokens
+	return containedTokens, overlapRatio
 }

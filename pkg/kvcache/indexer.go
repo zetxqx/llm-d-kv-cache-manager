@@ -36,7 +36,7 @@ type Config struct {
 	PrefixStoreConfig    *prefixstore.Config           `json:"prefixStoreConfig"`
 	TokenProcessorConfig *kvblock.TokenProcessorConfig `json:"tokenProcessorConfig"`
 	KVBlockIndexConfig   *kvblock.IndexConfig          `json:"kvBlockIndexConfig"`
-	KVBLockScorerConfig  *KVBlockScorerConfig          // not exported
+	KVBlockScorerConfig  *KVBlockScorerConfig          // not exported
 	TokenizersPoolConfig *tokenization.Config          `json:"tokenizersPoolConfig"`
 }
 
@@ -46,7 +46,7 @@ func NewDefaultConfig() *Config {
 		PrefixStoreConfig:    prefixstore.DefaultConfig(),
 		TokenProcessorConfig: kvblock.DefaultTokenProcessorConfig(),
 		KVBlockIndexConfig:   kvblock.DefaultIndexConfig(),
-		KVBLockScorerConfig:  DefaultKVBlockScorerConfig(),
+		KVBlockScorerConfig:  DefaultKVBlockScorerConfig(),
 		TokenizersPoolConfig: tokenization.DefaultConfig(),
 	}
 }
@@ -77,7 +77,7 @@ func NewKVCacheIndexer(ctx context.Context, config *Config) (*Indexer, error) {
 		return nil, fmt.Errorf("failed to create RedisKVBlockIndexer: %w", err)
 	}
 
-	scorer, err := NewKVBlockScorer(config.KVBLockScorerConfig)
+	scorer, err := NewKVBlockScorer(config.KVBlockScorerConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create KVBlockScorer: %w", err)
 	}
@@ -118,15 +118,9 @@ func (k *Indexer) GetPodScores(ctx context.Context, prompt, modelName string,
 	podIdentifiers []string,
 ) (map[string]int, error) {
 	traceLogger := klog.FromContext(ctx).V(logging.TRACE).WithName("kvcache.GetPodScores")
-	// 0. add to tokenizers pool
-	k.tokenizersPool.AddTask(prompt, modelName)
 
-	// 1. get available tokens of longest prefix
-	tokens := k.tokensIndexer.FindLongestContainedTokens(prompt, modelName)
-	if len(tokens) == 0 {
-		//nolint:nilnil // no need to return an error
-		return nil, nil
-	}
+	// 1. tokenize prompt
+	tokens := k.tokenizersPool.Tokenize(prompt, modelName)
 
 	// 2. get block keys
 	blockKeys := k.tokensProcessor.TokensToKVBlockKeys(tokens, modelName)
