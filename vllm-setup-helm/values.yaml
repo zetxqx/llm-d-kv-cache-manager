@@ -14,6 +14,9 @@ vllm:
   # -- Inference pool label value
   poolLabelValue: vllm-qwen3-8b
 
+  monitoring:
+    gke: false
+
   image:
     # -- VLLM image repository
     repository: vllm/vllm-openai

@@ -1,0 +1,22 @@
+apiVersion: monitoring.googleapis.com/v1
+kind: PodMonitoring
+metadata:
+  name: {{ .Release.Name }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: {{ .Release.Name }}
+    app.kubernetes.io/part-of: google-cloud-managed-prometheus
+spec:
+  endpoints:
+  - port: 8000
+    scheme: http
+    interval: 15s
+    path: /metrics
+  selector:
+    matchLabels:
+      {{- include "chart.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: vllm
+      {{- if and .Values.vllm.poolLabelKey .Values.vllm.poolLabelValue }}
+      {{ .Values.vllm.poolLabelKey }}: {{ .Values.vllm.poolLabelValue }}
+      {{- end }}
+      app.kubernetes.io/component: vllm
