@@ -8,11 +8,11 @@ pythonHashSeed: "0"
 # -- VLLM Deployment Configuration
 vllm:
   # -- Number of VLLM replicas
-  replicaCount: 1
+  replicaCount: 4
   # -- Inference pool label key
   poolLabelKey: app
   # -- Inference pool label value
-  poolLabelValue: vllm-qwen3-8b
+  poolLabelValue: vllm-llama-70b
 
   image:
     # -- VLLM image repository
@@ -24,9 +24,9 @@ vllm:
 
   model:
     # -- Hugging Face model name (e.g., mistralai/Mistral-7B-Instruct-v0.2)
-    name: Qwen/Qwen3-8B
+    name: meta-llama/Llama-3.1-70B-Instruct
     # -- Label used for Kubernetes resources related to this model instance
-    label: qwen3-8b
+    label: vllm-llama-70b
     # -- Maximum model length parameter for VLLM
     maxModelLen: 16384
 
@@ -39,16 +39,16 @@ vllm:
   # -- GPU memory utilization (optional, e.g., 0.95)
   gpuMemoryUtilization: null
   # -- Tensor parallel size (optional, e.g., 2)
-  tensorParallelSize: null
+  tensorParallelSize: 4
 
   # -- VLLM container resource requests and limits
   resources:
     limits:
-      nvidia.com/gpu: '1'
+      nvidia.com/gpu: '4'
     requests:
       cpu: '10'
       memory: 40Gi
-      nvidia.com/gpu: '1'
+      nvidia.com/gpu: '4'
 
   # -- Node affinity configuration
   affinity: {}

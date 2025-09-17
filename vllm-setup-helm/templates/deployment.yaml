@@ -95,6 +95,8 @@ spec:
               value: {{ .Values.persistence.mountPath }}
             - name: HF_HOME
               value: {{ .Values.persistence.mountPath }}
+            - name: LD_LIBRARY_PATH
+              value: "/usr/local/nvidia/lib64"
             - name: POD_IP
               valueFrom:
                 fieldRef:
